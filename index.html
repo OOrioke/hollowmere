@@ -1057,7 +1057,7 @@ function tryModels(){
     loader.load('models/' + id + '.glb', ok, undefined, ()=>{ loader.load('models/' + id + '.json', ok, undefined, ()=>{}); });
   });
 }
-const MODEL_H = {skinwalker:1.75, baby:1.15, spider:2.0, teadoll:.8, dummy:1.8};
+const MODEL_H = {skinwalker:2.3, baby:1.15, spider:2.0, teadoll:.8, dummy:1.8};
 function useModel(ch, gltf){
   const src = ch === CAST.find(c=>c.id === ch.id) ? gltf.scene : THREE.SkeletonUtils ? THREE.SkeletonUtils.clone(gltf.scene) : gltf.scene.clone();
   const bb = new THREE.Box3().setFromObject(src), h = bb.max.y - bb.min.y || 1;
@@ -1076,6 +1076,10 @@ function useModel(ch, gltf){
     ch.actions = {}; Object.keys(ch.clips).forEach(n=>{ ch.actions[n] = ch.mixer.clipAction(ch.clips[n]); });
     ch.cur = 'idle'; ch.actions.idle.play();
     src.traverse(o=>{ if (!ch.rigHips && o.isBone && /hips|pelvis/i.test(o.name)) ch.rigHips = o; }); if (ch.rigHips) ch.rigHipsRest = ch.rigHips.position.clone();
+    // some exports carry the walk as big hip travel on any axis (even upward); flatten travel bigger than a bob, keep the bob
+    if (ch.rigHips) gltf.animations.forEach(clip=>clip.tracks.forEach(t=>{ if (!/position$/.test(t.name) || t.name.split('.')[0] !== ch.rigHips.name.replace(/[\[\]\.:\/]/g,'')) return;
+      const v = t.values; for (let ax=0; ax<3; ax++){ let lo = 1e9, hi = -1e9; for (let i=ax; i<v.length; i+=3){ lo = Math.min(lo, v[i]); hi = Math.max(hi, v[i]); }
+        if (hi - lo > 1.0){ const base = ch.rigHipsRest.getComponent(ax); for (let i=ax; i<v.length; i+=3) v[i] = base; } } }));
     ch.actions.walk.timeScale = 1.0;
   }
 }
