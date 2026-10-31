@@ -272,6 +272,7 @@ function cyl(rt,rb,h,mat,x,y,z,parent,seg){ const c=new THREE.Mesh(new THREE.Cyl
 // The manor: rooms on a grid, joined by doorways
 // =====================================================================
 const PLAN = [
+  {id:'yard',     name:'Outside the Manor',      w:9,  d:8,  h:9,   out:true, wall:'trees', floor:'dirt', fog:0x0a0e14},
   {id:'entry',    name:'The Entrance Hall',      w:7,  d:6,  h:4,   wall:'wood',   floor:'floor', fog:0x1c0b07},
   {hall:true, cameo:'root'},
   {id:'circus',   name:'The Funhouse',           w:9,  d:9,  h:6,   wall:'circus', floor:'check', fog:0x1c0806},
@@ -382,13 +383,24 @@ const BUF = {}, BUF_EXT = {};
 function b64buf(src){ const s = atob(src.split(',')[1]); const a = new Uint8Array(s.length); for (let i=0;i<s.length;i++) a[i] = s.charCodeAt(i); return a.buffer; }
 function decode(ab){ return new Promise((res, rej)=>{ const p = actx.decodeAudioData(ab, res, rej); if (p && p.then) p.then(res, rej); }); }
 function makeIR(sec, decay){ const len = Math.floor(actx.sampleRate*sec), b = actx.createBuffer(2, len, actx.sampleRate); for (let c=0;c<2;c++){ const d = b.getChannelData(c); for (let i=0;i<len;i++) d[i] = (Math.random()*2-1)*Math.pow(1-i/len, decay); } return b; }
+// [echo length s, decay, wet level]
+const VERBS = {small:[.9,4,.32], medium:[1.8,3,.45], large:[4.2,2.2,.62], open:[1.4,6,.1], funhouse:[2.6,2.8,.5], glass:[1.6,1.8,.55]};
+const ROOM_VERB = {yard:'open', forest:'open', entry:'medium', hotel:'medium', playroom:'medium', slaughter:'medium', wake:'medium', chase:'medium',
+  elevator:'small', nicu:'small', shop:'small', circus:'funhouse', mirrors:'glass', church:'large', final:'large', passage:'small'};
+const VERB_G = {}; let verbCur = 'medium';
+function setVerb(name){
+  if (!actx || !name || name === verbCur || !VERB_G[name]) return; const t = actx.currentTime;
+  Object.keys(VERB_G).forEach(k=>VERB_G[k].gain.setTargetAtTime(k === name ? VERBS[k][2] : 0, t, .6)); verbCur = name;
+}
 function initAudio(){
   try{
     if (actx){ if (actx.state !== 'running' && actx.resume) actx.resume(); return; }
     listener = new THREE.AudioListener(); camera.add(listener);
     actx = listener.context; if (actx.resume) actx.resume();
     const comp = actx.createDynamicsCompressor(); comp.connect(actx.destination);
-    const conv = actx.createConvolver(); conv.buffer = makeIR(2.4, 3); const wg = actx.createGain(); wg.gain.value = .5; conv.connect(wg).connect(comp);
+    // room acoustics: one echo per room size, crossfaded as you walk (see ROOM_VERB)
+    const conv = actx.createGain();
+    Object.keys(VERBS).forEach(k=>{ const v = VERBS[k], c = actx.createConvolver(); c.buffer = makeIR(v[0], v[1]); const g = actx.createGain(); g.gain.value = k === 'medium' ? v[2] : 0; conv.connect(c); c.connect(g).connect(comp); VERB_G[k] = g; });
     const wet = actx.createGain(); wet.gain.value = .45; wet.connect(conv);
     master = actx.createGain(); master.gain.value = .9; master.connect(comp); master.connect(wet);
     listener.gain.disconnect(); listener.gain.connect(comp); const lw = actx.createGain(); lw.gain.value = .35; listener.gain.connect(lw); lw.connect(conv);
@@ -399,7 +411,7 @@ function initAudio(){
     Object.keys(VO).forEach(k=>{ try{ fetch('voices/' + k + '.mp3').then(r=>r.ok ? r.arrayBuffer() : null).then(ab=>ab ? decode(ab) : null).then(b=>{ if (b) BUF_EXT[k] = b; }).catch(()=>{}); }catch(e){} });
   }catch(e){ actx = null; }
 }
-const voices = new Map();
+const voices = new Map(); let duckUntil = 0;
 function voiceOn(obj, ref){
   let a = voices.get(obj);
   if (!a){ a = new THREE.PositionalAudio(listener); a.setRefDistance(ref || 1.4); a.setRolloffFactor(1.3); a.setDistanceModel('inverse'); if (a.panner) a.panner.panningModel = 'HRTF'; obj.add(a); voices.set(obj, a); }
@@ -411,6 +423,7 @@ function say(obj, id, vol, ref){
   if (!b) return dur;
   const a = voiceOn(obj, ref);
   try{ if (a.isPlaying) a.stop(); a.setBuffer(b); a.setVolume(vol == null ? 1.6 : vol); a.play(); }catch(e){}
+  duckUntil = Math.max(duckUntil, actx.currentTime + b.duration);   // background dips while someone speaks
   return dur;
 }
 const earL = new THREE.Object3D(), earR = new THREE.Object3D(), earB = new THREE.Object3D();
@@ -561,6 +574,8 @@ const webTex = new THREE.CanvasTexture(cnv(256,256,(g,w,h)=>{ g.strokeStyle='rgb
 const webM = new THREE.MeshBasicMaterial({map:webTex, transparent:true, opacity:.5, side:THREE.DoubleSide, depthWrite:false});
 function textPlane(text, w, h, font, color, bg){ const c = cnv(512, Math.round(512*h/w), (g,W,H)=>{ if (bg){ g.fillStyle = bg; g.fillRect(0,0,W,H); } g.fillStyle = color || '#2a1a10'; g.font = font || '40px Georgia'; g.textAlign = 'center'; g.textBaseline = 'middle'; const lines = text.split('\n'); lines.forEach((l,i)=>g.fillText(l, W/2, H/2 + (i - (lines.length-1)/2)*parseInt(font||'40')*1.25)); }); return new THREE.Mesh(new THREE.PlaneGeometry(w, h), M(0xffffff, {map:new THREE.CanvasTexture(c), roughness:.9})); }
 
+// ---------- Outside the manor (the walk up to the front door) ----------
+{ const c = roomCenter('yard'); vlight(0x9ab0ff, .6, 16, c.x, 6, c.z, false); const d = RP('yard', .5, .97); vlight(0xffb060, .7, 5, d.x, 2.6, d.z, true); }
 // ---------- Doors between spaces ----------
 const DOOR = {};
 DOORS.forEach(d=>{
@@ -802,7 +817,11 @@ const CHAPEL = {};
   [['W',.3],['W',.6],['E',.3],['E',.6]].forEach(([wl,f])=>{ const w = onWall('church',wl,f,3.6,.03); const win = new THREE.Mesh(new THREE.PlaneGeometry(1.1,2.4), new THREE.MeshBasicMaterial({map:sgt, transparent:true})); at(win, w.p, w.ry); G.add(win); });
   // drapes that can burn
   CHAPEL.drapes = [['W',.85],['E',.85],['N',.2],['N',.8]].map(([wl,f])=>{ const w = onWall('church',wl,f,2.6,.12); const d = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 5, 10, 1), M(0x5a0a12,{side:THREE.DoubleSide, roughness:1})); const dp = d.geometry.attributes.position; for (let i=0;i<dp.count;i++) dp.setZ(i, Math.sin(dp.getX(i)*9)*.06); d.geometry.computeVertexNormals(); at(d, w.p, w.ry); G.add(d); return {m:d, p:w.p.clone(), lit:false}; });
-  const mt = RP('church', .12, .72); box(.6,.8,.4,darkWood,mt.x,.4,mt.z,G); collider(mt.x, mt.z, .32, .22);
+  const mt = RP('church', .12, .72);
+  // a small stone pedestal for the matches: square base, round column, square top
+  CHAPEL.pedestal = new THREE.Group(); CHAPEL.pedestal.position.set(mt.x, 0, mt.z); G.add(CHAPEL.pedestal);
+  box(.42,.1,.42,stoneM,0,.05,0,CHAPEL.pedestal); cyl(.11,.13,.62,stoneM,0,.41,0,CHAPEL.pedestal,14); box(.36,.08,.36,stoneM,0,.76,0,CHAPEL.pedestal); box(.3,.02,.3,M(0x5a0a12),0,.81,0,CHAPEL.pedestal);
+  collider(mt.x, mt.z, .22, .22);
   CHAPEL.matches = new THREE.Group(); CHAPEL.matches.position.set(mt.x, .83, mt.z); G.add(CHAPEL.matches); box(.1,.03,.06,M(0x8a1a12),0,0,0,CHAPEL.matches); box(.09,.032,.05,M(0x3a2a1a),0,.002,0,CHAPEL.matches);
   CHAPEL.matchSpot = P(mt.x, .83, mt.z);
   CHAPEL.blue = vlight(0x6070ff, .45, 9, RP('church',.5,.45).x, 4.5, RP('church',.5,.45).z, false);
@@ -1308,11 +1327,11 @@ function roomShell(r, inset){
 }
 // uOff turns a picture so the right part faces the exit; dim sets brightness; follow = the picture moves with you (long spaces)
 // keepNear: [roomFx, roomFz, radius] spots whose built-in furniture stays because the story uses it
-const PANO_ROOMS = {entry:{}, circus:{}, mirrors:{keepAll:true}, hotel:{keepNear:[[.28,.55,1.6]]}, elevator:{}, forest:{dim:.8}, playroom:{}, nicu:{}, shop:{},
+const PANO_ROOMS = {yard:{file:'outside', dim:.9, uOff:.64}, entry:{}, circus:{}, mirrors:{keepAll:true}, hotel:{keepNear:[[.28,.55,1.6]]}, elevator:{}, forest:{dim:.8}, playroom:{}, nicu:{}, shop:{},
   slaughter:{uOff:.97, keepNear:[[.5,.5,1.0]]}, wake:{}, chase:{follow:true}, church:{}, final:{keepNear:[[.5,.42,.9]]}, passage:{uOff:.85}};
 const PANO_MATS = [], PANO_FOLLOW = [];
 // objects the story needs: never hidden
-function panoKeepers(){ return [FUN.box, FUN.ped, HOTEL.bell, MAZE.real && MAZE.real.g, SLAB.knife, SLAB.clock && SLAB.clock.m, CHAPEL.matches, CHAPEL.cross, FINAL.table, FINAL.pen]
+function panoKeepers(){ return [FUN.box, FUN.ped, HOTEL.bell, MAZE.real && MAZE.real.g, SLAB.knife, SLAB.clock && SLAB.clock.m, CHAPEL.matches, CHAPEL.pedestal, CHAPEL.cross, FINAL.table, FINAL.pen]
   .concat(PLAY.chests.map(c=>c.g), SLAB.straps.map(s=>s.g), CHAPEL.drapes.map(d=>d.m), FINAL.mirrors.map(m=>m.g)).filter(o=>o && o.isObject3D); }
 function underAny(o, list){ for (let p = o; p; p = p.parent) if (list.includes(p)) return true; return false; }
 // the photo already shows the room, so the game's simple built-in furniture is hidden (and you can walk where it stood)
@@ -1340,7 +1359,7 @@ function panoRoom(id, tex, o){
 }
 function tryPanos(){
   Object.keys(PANO_ROOMS).forEach(id=>{
-    panoTex('panos/pano_' + id + '.jpg', tex=>{
+    panoTex('panos/pano_' + (PANO_ROOMS[id].file || id) + '.jpg', tex=>{
       const ids = id === 'passage' ? ROOMS.filter(r=>r.id.startsWith('hall')).map(r=>r.id) : [id];
       ids.forEach(rid=>panoRoom(rid, tex, PANO_ROOMS[id]));
       // the maze's mirror panels reflect the mirror-hall picture instead of a blurry snapshot
@@ -1357,6 +1376,41 @@ function tryPanos(){
 const MENU_SPOT = new THREE.Vector3(cellX(GW) + 80, 0, 0);
 let MENU_SKY = null;
 function tickPanos(){ PANO_FOLLOW.forEach(f=>{ const rc = roomCenter(f.id); f.mat.uniforms.c.value.set(rc.x, 1.6, Math.max(Math.min(camW.z, rc.z + 14), rc.z - 14)); }); PANO_MATS.forEach(m=>{ m.uniforms.dim.value = m.userData.base * (MENU_SKY && m === MENU_SKY.material ? 1 : lightLevel); }); if (MENU_SKY) MENU_SKY.visible = state !== 'play'; }
+
+// =====================================================================
+// Room ambience: looping sound beds from ambience/amb_<name>.ogg,
+// crossfaded as you move between rooms. Missing files are skipped.
+// =====================================================================
+const AMB_FILES = ['exterior','foyer','corridor','funhouse','hospital','forest'];
+const AMB_ROOM = {yard:'exterior', entry:'foyer', circus:'funhouse', mirrors:'funhouse', hotel:'foyer', elevator:'corridor', forest:'forest',
+  playroom:'foyer', nicu:'hospital', shop:'corridor', slaughter:'corridor', wake:'foyer', chase:'corridor', church:'foyer', final:'foyer'};
+const AMB_GAIN = {exterior:1, foyer:1, forest:1, corridor:1.6, funhouse:1.6, hospital:1.6};   // evens out the quieter loops
+const AMB = {bufs:{}, live:{}, cur:null, loading:false, out:null};
+function ambLoad(){
+  if (AMB.loading || !actx) return; AMB.loading = true;
+  AMB.out = actx.createGain(); AMB.out.gain.value = .55; AMB.out.connect(actx.destination);
+  AMB_FILES.forEach(n=>{ try{ fetch('ambience/amb_' + n + '.ogg').then(r=>r.ok ? r.arrayBuffer() : null).then(ab=>ab ? actx.decodeAudioData(ab) : null).then(b=>{ if (b) AMB.bufs[n] = b; }).catch(()=>{}); }catch(e){} });
+}
+function ambSet(name){
+  if (name === AMB.cur) return;
+  if (name && !AMB.bufs[name]) return;            // not loaded yet: try again next frame
+  const t = actx.currentTime;
+  Object.keys(AMB.live).forEach(k=>{ if (k === name) return; const n = AMB.live[k]; n.g.gain.setTargetAtTime(0, t, .7); delete AMB.live[k]; setTimeout(()=>{ try{ n.s.stop(); }catch(e){} }, 4000); });
+  if (name){ const s = actx.createBufferSource(); s.buffer = AMB.bufs[name]; s.loop = true; const g = actx.createGain(); g.gain.value = 0; s.connect(g).connect(AMB.out);
+    s.start(0, Math.random()*20); g.gain.setTargetAtTime(AMB_GAIN[name] || 1, t, .9); AMB.live[name] = {s, g}; }
+  AMB.cur = name;
+}
+function tickAmbience(){
+  if (!actx) return; ambLoad();
+  let want = null;
+  if (state === 'play'){ const r = roomAt(camW.x, camW.z); if (r) want = r.id.startsWith('hall') ? 'corridor' : (AMB_ROOM[r.id] || null); else want = AMB.cur; }
+  ambSet(want);
+  if (state === 'play'){ const r = roomAt(camW.x, camW.z); if (r) setVerb(r.id.startsWith('hall') ? 'small' : (ROOM_VERB[r.id] || 'medium')); }
+  if (AMB.out){
+    const duck = actx.currentTime < duckUntil + .25 ? .4 : 1;          // dialogue ducking: about -8 dB under speech
+    AMB.out.gain.setTargetAtTime(.55 * (.35 + .65*lightLevel) * duck, actx.currentTime, duck < 1 ? .12 : .5);   // dips with the lights in blackouts
+  }
+}
 
 // =====================================================================
 // State
@@ -1445,7 +1499,7 @@ function buildHand(h){
     fl.add(torch); fl.add(torchTarget); torch.position.set(0,0,-.15); torchTarget.position.set(0,-.4,-3);
   } else { wristPanel = canvasPanel(512, 256, .16, .08); wristPanel.m.position.set(0, .03, .12); wristPanel.m.rotation.x = -Math.PI/2.3; h.grip.add(wristPanel.m); drawWrist(); }
 }
-const STAGE_NAMES = ['The Entrance','The Funhouse','The House of Mirrors','The Hotel','The Woods','The Playroom','The Nursery Ward','The Butcher\u2019s Shop','The Back Room','The Long Hall','The Chapel','The Hall of Reflections'];
+const STAGE_NAMES = ['The Front Door','The Funhouse','The House of Mirrors','The Hotel','The Woods','The Playroom','The Nursery Ward','The Butcher\u2019s Shop','The Back Room','The Long Hall','The Chapel','The Hall of Reflections'];
 function wrapText(g, text, x, y, maxW, lh, maxLines){ const words = (text || '').split(' '); let line = '', n = 0; for (const w of words){ if (g.measureText(line + w).width > maxW && line){ g.fillText(line.trim(), x, y); y += lh; line = ''; if (++n >= maxLines - 1) { } } line += w + ' '; } if (line.trim()) g.fillText(line.trim(), x, y); return y + lh; }
 function drawWrist(){ if (!wristPanel) return; const g = wristPanel.g, W = 512, H = 256; g.clearRect(0,0,W,H); g.fillStyle='rgba(14,9,18,.92)'; g.fillRect(0,0,W,H); g.strokeStyle='#5a3a2a'; g.lineWidth=4; g.strokeRect(2,2,W-4,H-4);
   g.textAlign='left'; g.fillStyle='#e0684f'; g.font='bold 22px monospace'; g.fillText('ESCAPE HOLLOWMERE MANOR', 18, 34);
@@ -1661,8 +1715,11 @@ function checkpoint(room, fz, face){ return {p: RP(room, .5, fz), face: face == 
 
 // 0 ---- Entrance
 async function sEntry(retry){
+  objective('Enter Hollowmere Manor', 'Walk up the path to the front door. The gate has locked behind you.');
+  await until(()=>inRoom('entry'));
+  lockDoor('yard','entry');
   objective('Walk through the manor', 'Follow the hallway north. Every door you pass through brings you closer to the way out.');
-  await sleep(1500); say(earR, 'house_welcome', 1.5);
+  await sleep(1200); say(earR, 'house_welcome', 1.5);
   await until(()=>inRoom('hall1'));
 }
 // 1 ---- The Funhouse (Clown)
@@ -2023,6 +2080,7 @@ async function sChapel(retry){
 // 11 ---- The Hall of Reflections
 async function sFinale(retry){
   const inDoor = DOORS.find(d=>d.to === 'final');
+  unlockDoor(inDoor.from, 'final', false);
   await until(()=>inRoom('final'));
   lockDoor(inDoor.from, 'final'); clearFires();
   objective(''); FINAL.light.mult = .5;
@@ -2052,7 +2110,7 @@ async function sFinale(retry){
   win();
 }
 const SCENES = [sEntry, sFunhouse, sMirrors, sHotel, sWoods, sPlayroom, sNicu, sShop, sStraps, sShadow, sChapel, sFinale];
-const SCENE_START = [null, ['hall1',.5,0], ['hall2',.5,0], ['hall3',.5,0], ['hall4',.5,0], ['hall5',.5,0], ['hall6',.5,0], ['hall7',.5,0], null, null, ['chase',.9,0], ['hall8',.5,0]];
+const SCENE_START = [null, ['hall1',.5,0], ['hall2',.5,0], ['hall3',.5,0], ['hall4',.5,0], ['hall5',.5,0], ['hall6',.5,0], ['hall7',.5,0], null, null, ['chase',.9,0], ['final',.2,0]];   // a failed mirror choice puts you back inside the final hall
 
 async function runStory(from){
   for (let i=from; i<SCENES.length; i++){
@@ -2082,7 +2140,7 @@ function begin(from){
   initAudio(); resetAll(); startDrone(); state = 'play'; startTime = performance.now();
   $('menu').hidden = true; $('hud').hidden = renderer.xr.isPresenting; $('touch').hidden = renderer.xr.isPresenting || !matchMedia('(pointer: coarse)').matches;
   const f = from || 0; const s = SCENE_START[f];
-  placePlayer(s ? RP(s[0], .5, s[1]) : RP('entry', .5, .12), 0);
+  placePlayer(s ? RP(s[0], .5, s[1]) : RP('yard', .5, .08), 0);
   toast('Hollowmere Manor', 'Welcome');
   runStory(f).catch(e=>{ console.error(e); });
 }
@@ -2136,7 +2194,7 @@ function frame(){
     ctl.ticks.slice().forEach(f=>f(dt, t));
     tickUses(dt); tickCameos(dt); tickShadowFollow(dt);
   }
-  tickDoors(dt); tickFires(dt, t); tickAvatar(dt, t); tickPanos();
+  tickDoors(dt); tickFires(dt, t); tickAvatar(dt, t); tickPanos(); tickAmbience();
   for (let i=tweens.length-1;i>=0;i--){ const tw = tweens[i]; tw.t += dt; const k = Math.min(1, tw.t/tw.dur), e = 1 - Math.pow(1-k, 3); tw.obj.position.lerpVectors(tw.from, tw.to, e); if (k >= 1){ tweens.splice(i,1); tw.res(); } }
   CAST.forEach(ch=>{ if (ONLY_3D && !ch.model && !ch.isAvatar) ch.root.visible = false; if (ch.isAvatar || !ch.root.visible) return; const d = ch.root.position.distanceTo(camW); if (d > 22 && ch.pose !== 'scare') return; if (ch.model) animateModel(ch, dt); else animate(ch, dt, t); });
   PLAY.mobile.rotation.y = t*.3;
