@@ -1259,12 +1259,13 @@ function tryProps(){
 }
 
 // creatures that are plain objects (not cast members) and the thing in the toy chest
-const JUMPER = {g:new THREE.Group(), ready:false, h:.95}; JUMPER.g.visible = false; scene.add(JUMPER.g);
+const JUMPER = {g:new THREE.Group(), ready:false, h:1.0}; JUMPER.g.visible = false; scene.add(JUMPER.g);
 function loadModelFile(id, ok){ if (!THREE.GLTFLoader) return; const L = new THREE.GLTFLoader(); L.load('models/' + id + '.glb', ok, undefined, ()=>{ L.load('models/' + id + '.json', ok, undefined, ()=>{}); }); }
 function fitInto(group, gltf, height){ const src = prepModel(gltf.scene); const bb = new THREE.Box3().setFromObject(src), h = (bb.max.y - bb.min.y) || 1, k = height / h; src.scale.setScalar(k); const c = bb.getCenter(new THREE.Vector3()); src.position.set(-c.x*k, -bb.min.y*k, -c.z*k); group.add(src); }
 function tryCritters(){
   [['deer', deer, 1.5], ['owl', owl, .4]].forEach(([id, obj, h])=>loadModelFile(id, gltf=>{ obj.children.slice().forEach(ch=>{ ch.visible = false; }); fitInto(obj, gltf, h); obj.userData.model = true; }));
-  loadModelFile('baby_bundle', gltf=>{ bundle.children.slice().forEach(ch=>{ ch.visible = false; }); const g = new THREE.Group(); fitInto(g, gltf, .32); g.position.y = -.12; bundle.add(g); bundle.userData.model = true; });
+  if (ONLY_3D && bundle.userData.head) bundle.userData.head.visible = false;
+  loadModelFile('baby_bundle', gltf=>{ if (bundle.userData.head) bundle.userData.head.visible = true; bundle.children.slice().forEach(ch=>{ ch.visible = false; }); const g = new THREE.Group(); fitInto(g, gltf, .32); g.position.y = -.12; bundle.add(g); bundle.userData.model = true; });
   loadModelFile('jumper', gltf=>{ fitInto(JUMPER.g, gltf, JUMPER.h); JUMPER.ready = true; });
 }
 
@@ -1565,20 +1566,32 @@ function faceTarget(ch, dist){
 }
 function buzzAll(strength, ms){ const s = renderer.xr.getSession(); if (!s) return; for (const src of s.inputSources){ const h = src.gamepad && src.gamepad.hapticActuators && src.gamepad.hapticActuators[0]; if (h && h.pulse) try{ h.pulse(strength, ms); }catch(e){} } }
 function hit(){ scares++; $('scares').textContent = scares; buzzAll(1, 400); }
+// a light that is always in the scene (adding lights mid-game would stutter) and only glows during a scare
+// big creatures stop further away so you can see all of them
+const SCARE_DIST = {skinwalker:2.2, shadow:1.8, baby:2.1, spider:1.8, pumpkin:1.6};
+const scareLight = new THREE.PointLight(0xffe2cc, 0, 4.5, 1.6); scene.add(scareLight);
 async function jumpScare(ch, o){
   o = o || {}; scaring = true;
   try{
-    ch.root.visible = true; if (ch.body) ch.body.visible = true; ch.pose = 'scare'; ch.speed = 0;
-    tween(ch.root, faceTarget(ch, o.dist || .62), o.lunge || .14);
+    ch.root.visible = true; if (ch.body && !ch.model) ch.body.visible = true; ch.speed = 0;
+    if (ch.model){
+      // real 3D character: appear a few steps away, lunge to arm's length, play its own jump-scare animation
+      const from = faceTarget(ch, 2.4); from.y = 0; ch.root.position.copy(from);
+      const small = (MODEL_H[ch.id] || (ch.cfg && ch.cfg.H) || 1.8) < 1.3;
+      const to = faceTarget(ch, SCARE_DIST[ch.id] || (small ? 1.05 : 1.3)); to.y = small ? Math.max(0, camW.y - .15 - (MODEL_H[ch.id] || ch.cfg.H || 1)) : 0;   // small ones leap up to your face
+      if (ch.actions && ch.actions.scare){ ch.cur = 'idle'; Object.values(ch.actions).forEach(a=>a.stop()); ch.actions.idle.play(); }
+      ch.pose = 'scare'; tween(ch.root, to, o.lunge || .28);
+      scareLight.position.set((camW.x + to.x)/2, camW.y + .2, (camW.z + to.z)/2); scareLight.intensity = 2.2;
+    } else { ch.pose = 'scare'; tween(ch.root, faceTarget(ch, o.dist || .62), o.lunge || .14); }
     sting(); strobe(.5); hit(); duckDrone(false);
     if (o.voice) say(ch.head, o.voice, 2.4);
     if (o.scream) scream(Object.assign({vol:.35}, o.scream));
     if (o.roar) roar(null, 1.3, o.roar);
-    await sleep(o.hold || 1700);
-    lightLevel = 0; await sleep(450);
+    await sleep(o.hold || (ch.model ? 2200 : 1700));
+    scareLight.intensity = 0; lightLevel = 0; await sleep(450);
     if (o.hide !== false) ch.root.visible = false;
     lightLevel = 1;
-  } finally { scaring = false; }
+  } finally { scaring = false; scareLight.intensity = 0; }
 }
 async function flicker(ms){ const end = performance.now() + ms; while (performance.now() < end){ lightLevel = Math.random() < .5 ? .1 : 1; if (Math.random() < .3) noise(.05,'bandpass',3000,.12); await sleep(50 + Math.random()*90); } lightLevel = 1; }
 async function blackout(ms){ lightLevel = 0; duckDrone(true); await sleep(ms); lightLevel = 1; duckDrone(false); }
@@ -1689,8 +1702,9 @@ async function jumpOutOfChest(chest){
   try{
     if (j){ j.visible = true; j.position.set(p.x, -.6, p.z); j.rotation.y = Math.atan2(camW.x - p.x, camW.z - p.z);
       sting(); strobe(.5); hit(); scream({pitch:1400, dur:1.2, vol:.35, f1:1000, f2:1600});
-      await tween(j, P(p.x + (camW.x - p.x)*.55, camW.y - JUMPER.h*.85, p.z + (camW.z - p.z)*.55), .16);
-      await sleep(1300); lightLevel = 0; await sleep(400); j.visible = false; lightLevel = 1; }
+      const dd = Math.hypot(camW.x - p.x, camW.z - p.z) || 1, k = Math.max(0, (dd - 1.0)/dd); scareLight.position.set(camW.x, camW.y, camW.z); scareLight.intensity = 2.2;
+      await tween(j, P(p.x + (camW.x - p.x)*k, Math.max(0, camW.y - .15 - JUMPER.h), p.z + (camW.z - p.z)*k), .22);
+      await sleep(1500); scareLight.intensity = 0; lightLevel = 0; await sleep(400); j.visible = false; lightLevel = 1; }
     else { sting(); strobe(.4); hit(); scream({pitch:1400, dur:1.0, vol:.3, f1:1000, f2:1600}); await sleep(900); }
   } finally { scaring = false; }
 }
@@ -1861,7 +1875,7 @@ async function sNicu(retry){
     clearInterval(beeper); tone('sine', 1180, 1180, 2.5, .08);
     await sleep(1200);
     const head = bundle.userData.head, wp = new THREE.Vector3(); head.getWorldPosition(wp);
-    if (bundle.userData.model){ bundle.rotation.y += Math.PI; tone('sine',200,90,.3,.2); } else head.lookAt(camW); say(head, 'baby_mama', 1.8, .6); objective('');
+    if (bundle.userData.model){ bundle.rotation.y += Math.PI; tone('sine',200,90,.3,.2); } else if (!ONLY_3D) head.lookAt(camW); say(head, 'baby_mama', 1.8, .6); objective('');
     await sleep(1400);
     NICU.red.mult = 1; scream({pitch:1500, dur:2.2, vol:.18, f1:1100, f2:1700}); scream({pitch:1300, dur:2.0, vol:.14, f1:1000, f2:1600, delay:.3});
     swarm.root.visible = true; tween(swarm.root, P(back.x, 0, back.z), .6);
