@@ -30,13 +30,14 @@ body{background:var(--night);color:var(--bone);font-family:var(--body);overflow:
 #torchBtn{pointer-events:auto;width:64px;height:64px;border-radius:50%;background:var(--panel);border:1px solid var(--line);color:var(--candle);font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
 #torchBtn[aria-pressed="false"]{color:var(--muted)}
 .objective{position:fixed;left:50%;top:calc(58px + env(safe-area-inset-top,0px));transform:translateX(-50%);max-width:calc(100% - 32px);margin:0;text-align:center;font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--candle);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:8px 14px;pointer-events:none}
+.hint{position:fixed;left:50%;top:calc(98px + env(safe-area-inset-top,0px));transform:translateX(-50%);width:min(560px,calc(100% - 32px));margin:0;text-align:center;font-size:15px;font-style:italic;line-height:1.4;color:var(--bone);background:rgba(10,6,12,.72);border-radius:4px;padding:6px 12px;pointer-events:none}
 .prompt{position:fixed;left:50%;top:56%;transform:translateX(-50%);max-width:calc(100% - 32px);margin:0;text-align:center;font-size:17px;color:var(--bone);background:rgba(10,6,12,.8);border:1px solid var(--candle);border-radius:4px;padding:8px 14px;pointer-events:none;opacity:0;transition:opacity .2s}
 .prompt.on{opacity:1}
 .timer{color:var(--rust)!important;font-size:16px!important}
 .rbtns{display:flex;gap:12px;align-items:flex-end}
 #useBtn{pointer-events:auto;width:84px;height:84px;border-radius:50%;background:var(--candle);color:#1a0f08;border:0;font-family:var(--mono);font-size:13px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;touch-action:none}
 select{font:inherit;font-size:15px;background:var(--night);color:var(--bone);border:1px solid var(--line);border-radius:4px;padding:6px 8px}
-.toast{position:fixed;left:0;right:0;top:20%;text-align:center;pointer-events:none;opacity:0;transition:opacity .8s;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.toast{position:fixed;left:0;right:0;top:32%;text-align:center;pointer-events:none;opacity:0;transition:opacity .8s;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .toast.on{opacity:1}
 .toast small{display:block;font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--candle)}
 .toast span{font-family:var(--display);font-size:clamp(34px,8vw,60px);color:var(--bone);text-shadow:0 0 30px rgba(0,0,0,.9)}
@@ -78,6 +79,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--bone);outline-o
   <div class="rbtns"><button id="useBtn" type="button" hidden>Use</button><button id="torchBtn" type="button" aria-pressed="true">Light</button></div>
 </div>
 <p class="objective" id="objective" hidden></p>
+<p class="hint" id="hint" hidden></p>
 <p class="prompt" id="prompt"></p>
 <div class="toast" id="toast"><small id="toastSub">Now entering</small><span id="toastText">The Front Yard</span></div>
 <p class="caption" id="caption" aria-live="polite"></p>
@@ -86,7 +88,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--bone);outline-o
   <div class="card">
     <p class="eyebrow" id="eyebrow">A haunted house in nine rooms</p>
     <h1 id="headline">Hollowmere Manor</h1>
-    <p class="lede" id="lede">Walk the manor room by room: the funhouse, the hall of mirrors, the hotel, the woods, the playroom, the nursery, the butcher’s shop, and the chapel. Something has been following you since the front door.</p>
+    <p class="lede" id="lede">Walk the manor room by room: the funhouse, the hall of mirrors, the hotel, the woods, the playroom, the nursery, the butcher’s shop, and the chapel. Something has been following you since the front door. Your only goal: escape the manor. Your left wrist (or the top of the screen) always shows what to do next.</p>
     <dl class="controls">
       <dt>Quest</dt><dd>Left stick walks, squeeze left grip to run. Right stick turns. Reach out and pull the trigger to use things. A switches the flashlight.</dd>
       <dt>Computer</dt><dd>W A S D to walk, Shift to run, drag to look, F for the flashlight, E or click to use things.</dd>
@@ -271,7 +273,7 @@ function cyl(rt,rb,h,mat,x,y,z,parent,seg){ const c=new THREE.Mesh(new THREE.Cyl
 // =====================================================================
 const PLAN = [
   {id:'entry',    name:'The Entrance Hall',      w:7,  d:6,  h:4,   wall:'wood',   floor:'floor', fog:0x1c0b07},
-  {hall:true, cameo:'hangman'},
+  {hall:true, cameo:'root'},
   {id:'circus',   name:'The Funhouse',           w:9,  d:9,  h:6,   wall:'circus', floor:'check', fog:0x1c0806},
   {hall:true, cameo:'pumpkin'},
   {id:'mirrors',  name:'The House of Mirrors',   w:11, d:12, h:3.4, wall:'plum',   floor:'check', fog:0x120a16},
@@ -284,7 +286,7 @@ const PLAN = [
   {id:'playroom', name:"The Doll's Playroom",    w:7,  d:7,  h:3.2, wall:'paper',  floor:'floor', fog:0x0e140e},
   {hall:true, cameo:'twoface'},
   {id:'nicu',     name:'The Nursery Ward',       w:9,  d:7,  h:3.2, wall:'white',  floor:'flag',  fog:0x10120c},
-  {hall:true, cameo:'headless'},
+  {hall:true, cameo:'siren'},
   {id:'shop',     name:"The Butcher's Shop",     w:8,  d:6,  h:3.4, wall:'tile',   floor:'flag',  fog:0x1c0604},
   {id:'wake',     name:'A Quiet Room',           w:5,  d:5,  h:3,   wall:'plum',   floor:'floor', fog:0x08060a},
   {id:'chase',    name:'The Long Hall',          w:3,  d:22, h:3.4, wall:'stone',  floor:'flag',  fog:0x060406},
@@ -613,7 +615,7 @@ function makeMirror(parent, p, ry, w, h, rules, res){
 let envTarget = null;
 const mazeMirrorM = M(0xc8ccd8, {metalness:.85, roughness:.08, emissive:0x1a1424});
 function captureEnv(){
-  if (!THREE.WebGLCubeRenderTarget) return;
+  if (!THREE.WebGLCubeRenderTarget || envTarget) return;
   envTarget = new THREE.WebGLCubeRenderTarget(128, {generateMipmaps:true, minFilter:THREE.LinearMipmapLinearFilter});
   const cc = new THREE.CubeCamera(.1, 30, envTarget); const c = roomCenter('mirrors'); cc.position.set(c.x, 1.6, c.z); scene.add(cc);
   const hid = []; CAST.forEach(ch=>{ if (ch.root.visible){ hid.push(ch.root); ch.root.visible = false; } });
@@ -762,12 +764,15 @@ const SLAB = {};
   const board = box(.8, 2.0, .12, M(0x4a3a2a,{map:TX.wood}), 0, 1.1, 0, tb); board.rotation.x = -.12; box(.08,1.1,.08,ironM,-.3,.55,-.1,tb); box(.08,1.1,.08,ironM,.3,.55,-.1,tb);
   const strap = (name, x, y, z, w, locked) => { const g = new THREE.Group(); g.position.set(x, y, z); G.add(g); box(w, .07, .03, leatherM, 0, 0, 0, g); const bk = box(.06,.08,.04, locked ? ironM : brassM, 0, 0, .02, g); if (locked){ const lk = box(.06,.07,.03,M(0x5a5048,{metalness:.8}),0,-.07,.04,g); } return {name, g, bk, open:false, locked:!!locked}; };
   SLAB.straps = [
-    strap('chest', c.x, 1.25, c.z - .42, .7),
-    strap('left ankle', c.x - .14, .2, c.z - .4, .2),
-    strap('right ankle', c.x + .14, .2, c.z - .4, .2),
-    strap('left wrist', c.x - .38, .95, c.z - .38, .16, true),
+    // you stand with your back to the board, facing south, so the straps sit just in front of your body
+    strap('chest', c.x, 1.2, c.z, .7),
+    strap('left ankle', c.x + .14, .25, c.z - .05, .2),
+    strap('right ankle', c.x - .14, .25, c.z - .05, .2),
+    strap('left wrist', c.x + .38, .95, c.z - .12, .16, true),
   ];
-  const tray = RP('slaughter', .82, .38); box(.6,.04,.4,steelM,tray.x,.95,tray.z,G); cyl(.02,.02,.95,ironM,tray.x,.47,tray.z,G,6);
+  SLAB.straps.forEach(s=>{ s.base = s.g.position.clone(); });
+  // the knife tray is right beside your right hand
+  const tray = P(c.x - .5, 0, c.z + .02); box(.4,.04,.35,steelM,tray.x,.95,tray.z,G); cyl(.02,.02,.95,ironM,tray.x,.47,tray.z,G,6);
   SLAB.knifeSpot = P(tray.x, 1.0, tray.z);
   SLAB.knife = new THREE.Group(); SLAB.knife.position.copy(SLAB.knifeSpot); G.add(SLAB.knife); box(.03,.02,.12,M(0x2a1608),0,0,-.1,SLAB.knife); box(.006,.05,.3,steelM,0,.01,.1,SLAB.knife);
   SLAB.door = onWall('slaughter','N',.8,0,.3).p;
@@ -1048,7 +1053,8 @@ function tryModels(){
   const loader = new THREE.GLTFLoader(), tried = {};
   CAST.forEach(ch=>{
     const id = ch.id; if (tried[id]) return; tried[id] = 1;
-    loader.load('models/' + id + '.glb', gltf=>{ MODEL_FILES[id] = gltf; CAST.filter(c=>c.id === id).forEach(c=>useModel(c, gltf)); }, undefined, ()=>{});
+    const ok = gltf=>{ MODEL_FILES[id] = gltf; CAST.filter(c=>c.id === id).forEach(c=>useModel(c, gltf)); };
+    loader.load('models/' + id + '.glb', ok, undefined, ()=>{ loader.load('models/' + id + '.json', ok, undefined, ()=>{}); });
   });
 }
 const MODEL_H = {skinwalker:1.75, baby:1.15, spider:2.0, teadoll:.8, dummy:1.8};
@@ -1063,10 +1069,14 @@ function useModel(ch, gltf){
     ch.mixer = new THREE.AnimationMixer(src); ch.clips = {};
     const pick = re => gltf.animations.find(a=>re.test(a.name));
     ch.clips.idle = pick(/idle|stand|breath/i) || gltf.animations[0];
-    ch.clips.walk = pick(/walk/i) || ch.clips.idle; ch.clips.run = pick(/run|sprint|charge/i) || ch.clips.walk;
-    ch.clips.attack = pick(/attack|scare|scream|grab|punch/i) || ch.clips.run;
+    ch.clips.walk = pick(/walk/i) || ch.clips.idle; ch.clips.run = pick(/^running/i) || pick(/run|sprint|charge/i) || ch.clips.walk;
+    if (ch.id === 'survivor') ch.clips.idle = pick(/afraid/i) || ch.clips.idle;
+    ch.clips.attack = pick(/^attack/i) || pick(/attack|grab|punch/i) || ch.clips.run;
+    ch.clips.scare = pick(/jump scare/i) || pick(/scare|scream/i) || ch.clips.attack;
     ch.actions = {}; Object.keys(ch.clips).forEach(n=>{ ch.actions[n] = ch.mixer.clipAction(ch.clips[n]); });
     ch.cur = 'idle'; ch.actions.idle.play();
+    src.traverse(o=>{ if (!ch.rigHips && o.isBone && /hips|pelvis/i.test(o.name)) ch.rigHips = o; }); if (ch.rigHips) ch.rigHipsRest = ch.rigHips.position.clone();
+    ch.actions.walk.timeScale = 1.0;
   }
 }
 function animateModel(ch, dt){
@@ -1080,9 +1090,11 @@ function animateModel(ch, dt){
     m.scale.setScalar(m.userData.k); m.scale.y = m.userData.k*(1 + Math.sin(t*(sc ? 6 : 1.6))*.012);
     return;
   }
-  const want = (ch.pose === 'reach' || ch.pose === 'scare') ? 'attack' : ch.speed > 2 ? 'run' : ch.speed > .2 ? 'walk' : 'idle';
+  const want = ch.pose === 'scare' ? 'scare' : (ch.pose === 'reach' || ch.pose === 'chop') ? 'attack' : ch.speed > 2 ? 'run' : ch.speed > .2 ? 'walk' : 'idle';
   if (want !== ch.cur){ const a = ch.actions[want], b = ch.actions[ch.cur]; if (a && a !== b){ a.reset().fadeIn(.2).play(); if (b) b.fadeOut(.2); } ch.cur = want; }
   ch.mixer.update(dt);
+  // the game moves characters itself, so keep the hips over the spot (no drifting from the walk clip)
+  if (ch.rigHips){ ch.rigHips.position.x = ch.rigHipsRest.x; ch.rigHips.position.z = ch.rigHipsRest.z; }
 }
 
 // =====================================================================
@@ -1246,6 +1258,16 @@ function tryProps(){
   loader.load('props/teddy_bear.glb', gltf=>{ teddyGLTF = gltf; }, undefined, ()=>{});
 }
 
+// creatures that are plain objects (not cast members) and the thing in the toy chest
+const JUMPER = {g:new THREE.Group(), ready:false, h:.95}; JUMPER.g.visible = false; scene.add(JUMPER.g);
+function loadModelFile(id, ok){ if (!THREE.GLTFLoader) return; const L = new THREE.GLTFLoader(); L.load('models/' + id + '.glb', ok, undefined, ()=>{ L.load('models/' + id + '.json', ok, undefined, ()=>{}); }); }
+function fitInto(group, gltf, height){ const src = prepModel(gltf.scene); const bb = new THREE.Box3().setFromObject(src), h = (bb.max.y - bb.min.y) || 1, k = height / h; src.scale.setScalar(k); const c = bb.getCenter(new THREE.Vector3()); src.position.set(-c.x*k, -bb.min.y*k, -c.z*k); group.add(src); }
+function tryCritters(){
+  [['deer', deer, 1.5], ['owl', owl, .4]].forEach(([id, obj, h])=>loadModelFile(id, gltf=>{ obj.children.slice().forEach(ch=>{ ch.visible = false; }); fitInto(obj, gltf, h); obj.userData.model = true; }));
+  loadModelFile('baby_bundle', gltf=>{ bundle.children.slice().forEach(ch=>{ ch.visible = false; }); const g = new THREE.Group(); fitInto(g, gltf, .32); g.position.y = -.12; bundle.add(g); bundle.userData.model = true; });
+  loadModelFile('jumper', gltf=>{ fitInto(JUMPER.g, gltf, JUMPER.h); JUMPER.ready = true; });
+}
+
 // =====================================================================
 // 360 panoramas: panos/pano_<room>.jpg is painted onto that room's walls,
 // ceiling and floor as seen from the room centre. Doorways stay open.
@@ -1279,17 +1301,47 @@ function roomShell(r, inset){
   }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); return g;
 }
-const PANO_ROOMS = {entry:{uOff:.33, dim:.55}, circus:{}, mirrors:{}, hotel:{}, elevator:{}, forest:{}, playroom:{}, nicu:{}, shop:{}, slaughter:{}, wake:{}, chase:{}, church:{}, final:{}};
-const PANO_MATS = [];
+// uOff turns a picture so the right part faces the exit; dim sets brightness; follow = the picture moves with you (long spaces)
+// keepNear: [roomFx, roomFz, radius] spots whose built-in furniture stays because the story uses it
+const PANO_ROOMS = {entry:{}, circus:{}, mirrors:{keepAll:true}, hotel:{keepNear:[[.28,.55,1.6]]}, elevator:{}, forest:{dim:.8}, playroom:{}, nicu:{}, shop:{},
+  slaughter:{uOff:.97, keepNear:[[.5,.5,1.0]]}, wake:{}, chase:{follow:true}, church:{}, final:{keepNear:[[.5,.42,.9]]}, passage:{uOff:.85}};
+const PANO_MATS = [], PANO_FOLLOW = [];
+// objects the story needs: never hidden
+function panoKeepers(){ return [FUN.box, FUN.ped, HOTEL.bell, MAZE.real && MAZE.real.g, SLAB.knife, SLAB.clock && SLAB.clock.m, CHAPEL.matches, CHAPEL.cross, FINAL.table, FINAL.pen]
+  .concat(PLAY.chests.map(c=>c.g), SLAB.straps.map(s=>s.g), CHAPEL.drapes.map(d=>d.m), FINAL.mirrors.map(m=>m.g)).filter(o=>o && o.isObject3D); }
+function underAny(o, list){ for (let p = o; p; p = p.parent) if (list.includes(p)) return true; return false; }
+// the photo already shows the room, so the game's simple built-in furniture is hidden (and you can walk where it stood)
+function hideBuiltIns(id, o){
+  if (o.keepAll) return;
+  const keep = panoKeepers(), near = (o.keepNear || []).map(([fx,fz,r])=>{ const p = RP(id, fx, fz); return [p.x, p.z, r]; });
+  const v = new THREE.Vector3(), bb = new THREE.Box3(), doorCols = Object.values(DOOR).map(d=>d.col);
+  GROUPS[id].updateMatrixWorld(true);
+  GROUPS[id].traverse(m=>{
+    if (!(m.isMesh || m.isPoints) || m.userData.keep || underAny(m, keep)) return;
+    bb.setFromObject(m); if (bb.isEmpty()) return; bb.getCenter(v);
+    if (near.some(([x,z,r])=>Math.hypot(v.x - x, v.z - z) < r)) return;
+    m.visible = false;
+    if (m.isMesh) COLLIDERS.forEach(c=>{ if (doorCols.includes(c)) return; const cx = (c.x0+c.x1)/2, cz = (c.z0+c.z1)/2; if (cx > bb.min.x - .05 && cx < bb.max.x + .05 && cz > bb.min.z - .05 && cz < bb.max.z + .05) c.off = true; });
+  });
+}
+function panoRoom(id, tex, o){
+  const r = ROOM[id], c = roomCenter(id); c.y = 1.6; const G = GROUPS[id];
+  hideBuiltIns(id, o);
+  const mat = panoMat(tex, c, o.uOff != null ? o.uOff : .5, o.dim || .75); PANO_MATS.push(mat);   // centre of the picture faces the exit (north)
+  if (o.follow) PANO_FOLLOW.push({mat, id});
+  const mesh = new THREE.Mesh(roomShell(r, .03), mat); mesh.userData.keep = true; G.add(mesh);
+  const a = roomPoint(id, 0, 0), b = roomPoint(id, 1, 1), w = Math.abs(b.x - a.x), d = Math.abs(b.z - a.z), mx = (a.x + b.x)/2, mz = (a.z + b.z)/2;
+  [[.02, -Math.PI/2], [r.h - .02, Math.PI/2]].forEach(([y, rx])=>{ const pl = new THREE.Mesh(new THREE.PlaneGeometry(w, d), mat); pl.rotation.x = rx; pl.position.set(mx, y, mz); pl.userData.keep = true; G.add(pl); });
+}
 function tryPanos(){
   Object.keys(PANO_ROOMS).forEach(id=>{
     panoTex('panos/pano_' + id + '.jpg', tex=>{
-      const r = ROOM[id], o = PANO_ROOMS[id], c = roomCenter(id); c.y = 1.6;
-      const G = GROUPS[id]; G.traverse(m=>{ if (m.isMesh && !m.userData.keep) m.visible = false; });
-      const mat = panoMat(tex, c, o.uOff || 0, o.dim || .6); PANO_MATS.push(mat);
-      const mesh = new THREE.Mesh(roomShell(r, .03), mat); mesh.userData.keep = true; G.add(mesh);
-      const a = roomPoint(id, 0, 0), b = roomPoint(id, 1, 1), w = Math.abs(b.x - a.x), d = Math.abs(b.z - a.z), mx = (a.x + b.x)/2, mz = (a.z + b.z)/2;
-      [[.02, -Math.PI/2], [r.h - .02, Math.PI/2]].forEach(([y, rx])=>{ const pl = new THREE.Mesh(new THREE.PlaneGeometry(w, d), mat); pl.rotation.x = rx; pl.position.set(mx, y, mz); pl.userData.keep = true; G.add(pl); });
+      const ids = id === 'passage' ? ROOMS.filter(r=>r.id.startsWith('hall')).map(r=>r.id) : [id];
+      ids.forEach(rid=>panoRoom(rid, tex, PANO_ROOMS[id]));
+      // the maze's mirror panels reflect the mirror-hall picture instead of a blurry snapshot
+      if (id === 'mirrors' && THREE.PMREMGenerator){ try{ const t2 = tex.clone(); t2.mapping = THREE.EquirectangularReflectionMapping; t2.needsUpdate = true;
+        const pm = new THREE.PMREMGenerator(renderer); const env = pm.fromEquirectangular(t2).texture; pm.dispose();
+        mazeMirrorM.envMap = env; mazeMirrorM.color.setHex(0xb8b4c0); mazeMirrorM.emissive.setHex(0x000000); mazeMirrorM.metalness = 1; mazeMirrorM.roughness = .04; mazeMirrorM.envMapIntensity = .9; mazeMirrorM.needsUpdate = true; envTarget = env; }catch(e){} }
     });
   });
   panoTex('panos/pano_outside.jpg', tex=>{
@@ -1299,12 +1351,13 @@ function tryPanos(){
 }
 const MENU_SPOT = new THREE.Vector3(cellX(GW) + 80, 0, 0);
 let MENU_SKY = null;
-function tickPanos(){ PANO_MATS.forEach(m=>{ m.uniforms.dim.value = m.userData.base * (MENU_SKY && m === MENU_SKY.material ? 1 : lightLevel); }); if (MENU_SKY) MENU_SKY.visible = state !== 'play'; }
+function tickPanos(){ PANO_FOLLOW.forEach(f=>{ const rc = roomCenter(f.id); f.mat.uniforms.c.value.set(rc.x, 1.6, Math.max(Math.min(camW.z, rc.z + 14), rc.z - 14)); }); PANO_MATS.forEach(m=>{ m.uniforms.dim.value = m.userData.base * (MENU_SKY && m === MENU_SKY.material ? 1 : lightLevel); }); if (MENU_SKY) MENU_SKY.visible = state !== 'play'; }
 
 // =====================================================================
 // State
 // =====================================================================
 let state = 'menu', scares = 0, scaring = false, canMove = true, strobeT = 0, strobeDur = 0, startTime = 0, sceneIdx = 0;
+const ONLY_3D = true;   // characters without a real 3D model file are never shown
 let reduceFlash = false; try{ reduceFlash = localStorage.getItem('hmReduceFlash') === '1'; }catch(e){}
 let avatarKind = 'm'; try{ avatarKind = localStorage.getItem('hmAvatar') || 'm'; }catch(e){}
 const playing = () => state === 'play';
@@ -1317,7 +1370,8 @@ function offTick(fn){ const i = ctl.ticks.indexOf(fn); if (i >= 0) ctl.ticks.spl
 const tweens = [];
 function tween(obj, to, dur){ return new Promise(res => { tweens.push({obj, from:obj.position.clone(), to:to.clone(), t:0, dur, res}); }); }
 function strobe(sec){ strobeT = sec; strobeDur = sec; }
-function objective(text){ $('objective').textContent = text; $('objective').hidden = !text; drawWrist(); }
+let objText = '', objHint = '';
+function objective(text, hint){ objText = text || ''; objHint = hint || ''; $('objective').textContent = text; $('objective').hidden = !text; $('hint').textContent = objHint; $('hint').hidden = !objHint || !text; drawWrist(); }
 
 // =====================================================================
 // Movement: thumbstick in VR, WASD on a computer, joystick on a phone
@@ -1384,10 +1438,16 @@ function buildHand(h){
     const fl = joint(h.grip, 0, -.02, -.02); cyl(.022,.026,.2,M(0x2a2a2e,{metalness:.7,roughness:.4}),0,0,-.05,fl).rotation.x = Math.PI/2;
     const lens = new THREE.Mesh(new THREE.CircleGeometry(.022,14), glow(0xfff4d0)); lens.position.z = -.151; lens.rotation.y = Math.PI; fl.add(lens);
     fl.add(torch); fl.add(torchTarget); torch.position.set(0,0,-.15); torchTarget.position.set(0,-.4,-3);
-  } else { wristPanel = canvasPanel(256, 128, .13, .065); wristPanel.m.position.set(0, .03, .12); wristPanel.m.rotation.x = -Math.PI/2.3; h.grip.add(wristPanel.m); drawWrist(); }
+  } else { wristPanel = canvasPanel(512, 256, .16, .08); wristPanel.m.position.set(0, .03, .12); wristPanel.m.rotation.x = -Math.PI/2.3; h.grip.add(wristPanel.m); drawWrist(); }
 }
-function drawWrist(){ if (!wristPanel) return; const g = wristPanel.g; g.clearRect(0,0,256,128); g.fillStyle='rgba(18,12,22,.88)'; g.fillRect(0,0,256,128); g.fillStyle='#f0a640'; g.font='bold 30px Georgia'; g.textAlign='center';
-  const words = ($('objective').textContent || '').split(' '); let line = '', y = 44; words.forEach(w=>{ if (g.measureText(line + w).width > 236){ g.fillText(line, 128, y); y += 34; line = ''; } line += w + ' '; }); g.fillText(line, 128, y); wristPanel.t.needsUpdate = true; }
+const STAGE_NAMES = ['The Entrance','The Funhouse','The House of Mirrors','The Hotel','The Woods','The Playroom','The Nursery Ward','The Butcher\u2019s Shop','The Back Room','The Long Hall','The Chapel','The Hall of Reflections'];
+function wrapText(g, text, x, y, maxW, lh, maxLines){ const words = (text || '').split(' '); let line = '', n = 0; for (const w of words){ if (g.measureText(line + w).width > maxW && line){ g.fillText(line.trim(), x, y); y += lh; line = ''; if (++n >= maxLines - 1) { } } line += w + ' '; } if (line.trim()) g.fillText(line.trim(), x, y); return y + lh; }
+function drawWrist(){ if (!wristPanel) return; const g = wristPanel.g, W = 512, H = 256; g.clearRect(0,0,W,H); g.fillStyle='rgba(14,9,18,.92)'; g.fillRect(0,0,W,H); g.strokeStyle='#5a3a2a'; g.lineWidth=4; g.strokeRect(2,2,W-4,H-4);
+  g.textAlign='left'; g.fillStyle='#e0684f'; g.font='bold 22px monospace'; g.fillText('ESCAPE HOLLOWMERE MANOR', 18, 34);
+  g.fillStyle='#b4a6a8'; g.font='20px monospace'; g.fillText('Room ' + Math.min(sceneIdx+1, 12) + ' of 12 \u00b7 ' + (STAGE_NAMES[sceneIdx] || ''), 18, 62);
+  g.fillStyle='#f0a640'; g.font='bold 30px Georgia'; let y = wrapText(g, objText || '\u2026', 18, 104, W-36, 34, 3);
+  if (objHint){ g.fillStyle='#ece2cf'; g.font='italic 22px Georgia'; wrapText(g, objHint, 18, y + 4, W-36, 26, 3); }
+  wristPanel.t.needsUpdate = true; }
 function torchToCamera(){ camera.add(torch); camera.add(torchTarget); torch.position.set(.12,-.12,0); torchTarget.position.set(0,-.25,-3); }
 torchToCamera();
 function readVRInput(){
@@ -1555,7 +1615,7 @@ function calliope(on){ if (musicLoop){ clearInterval(musicLoop); musicLoop = nul
 // =====================================================================
 // Cameos in the passages and the Shadow that follows you
 // =====================================================================
-const CAMEO_CH = {hangman, pumpkin:pumpkinHead, wraith, plague, spider, twoface:twoFace, headless, bride};
+const CAMEO_CH = {hangman, root:rootThing, siren, pumpkin:pumpkinHead, wraith, plague, spider, twoface:twoFace, headless, bride};
 const cameos = [];
 ROOMS.forEach(r=>{ if (!r.cameo) return; cameos.push({room:r.id, ch:CAMEO_CH[r.cameo], done:false}); });
 function tickCameos(dt){
@@ -1584,7 +1644,7 @@ function checkpoint(room, fz, face){ return {p: RP(room, .5, fz), face: face == 
 
 // 0 ---- Entrance
 async function sEntry(retry){
-  objective('Walk through the manor');
+  objective('Walk through the manor', 'Follow the hallway north. Every door you pass through brings you closer to the way out.');
   await sleep(1500); say(earR, 'house_welcome', 1.5);
   await until(()=>inRoom('hall1'));
 }
@@ -1597,10 +1657,10 @@ async function sFunhouse(retry){
   FUN.lid.rotation.x = 0;
   await until(()=>inRoom('circus'));
   calliope(true);
-  objective('Find a way out of the funhouse');
+  objective('Find a way out of the funhouse', 'The exit door is locked. Something in this room must open it.');
   await sleep(1200); say(FUN.box, 'clown_hello', 1.8, 2); await sleep(3600);
   calliope(false); say(FUN.box, 'clown_crank', 1.8, 2);
-  objective('Turn the crank on the jack-in-the-box');
+  objective('Turn the crank on the jack-in-the-box', 'Stand at the box in the middle and hold the trigger (or E) on the crank until the song ends.');
   let prog = 0, note = -1, stage = 0, popped = false;
   const crank = addUse({obj:FUN.crank, r:.9, label:'Turn the crank (hold)', hold:1e9, onHold:(dt)=>{
     if (popped) return; prog = Math.min(1, prog + dt/10); FUN.crank.rotation.x += dt*6;
@@ -1619,9 +1679,20 @@ async function sFunhouse(retry){
   await sleep(500);
   await jumpScare(clown, {voice:'clown_laugh', scream:{pitch:800, dur:.9}});
   dummies.forEach(d=>{ d.tilt = .9; d.watch = false; });
-  unlockDoor('circus','hall2'); objective('Keep going');
+  unlockDoor('circus','hall2'); objective('The funhouse door is open', 'Go through the door at the far end to the next room.');
   await until(()=>inRoom('hall2'));
   hideAll();
+}
+async function jumpOutOfChest(chest){
+  const j = JUMPER.ready ? JUMPER.g : null; const p = chest.g.getWorldPosition(new THREE.Vector3());
+  scaring = true;
+  try{
+    if (j){ j.visible = true; j.position.set(p.x, -.6, p.z); j.rotation.y = Math.atan2(camW.x - p.x, camW.z - p.z);
+      sting(); strobe(.5); hit(); scream({pitch:1400, dur:1.2, vol:.35, f1:1000, f2:1600});
+      await tween(j, P(p.x + (camW.x - p.x)*.55, camW.y - JUMPER.h*.85, p.z + (camW.z - p.z)*.55), .16);
+      await sleep(1300); lightLevel = 0; await sleep(400); j.visible = false; lightLevel = 1; }
+    else { sting(); strobe(.4); hit(); scream({pitch:1400, dur:1.0, vol:.3, f1:1000, f2:1600}); await sleep(900); }
+  } finally { scaring = false; }
 }
 function doll_giggle_safe(){ scream({pitch:1500, dur:.4, vol:.08, f1:1100, f2:1700}); }
 // 2 ---- House of Mirrors (Mirror Ghost)
@@ -1629,7 +1700,7 @@ async function sMirrors(retry){
   lockDoor('mirrors','hall3');
   await until(()=>inRoom('mirrors'));
   if (!envTarget) captureEnv();
-  objective('Find your way through the mirrors');
+  objective('Find your way through the mirrors', 'Weave through the gaps in the mirror walls. Don\u2019t trust what moves at the edge of your eyes.');
   let peeks = 0, peek = null, wait = 2.5;
   const g = mirrorGhost;
   const tick = onTick((dt)=>{
@@ -1650,7 +1721,7 @@ async function sMirrors(retry){
   offTick(tick); await sleep(1500);
   say(earB, 'mirror_see', 1.6); await sleep(1600);
   await jumpScare(g, {scream:{pitch:1000, dur:1.1, f1:950, f2:1450}});
-  objective('Look into the mirror by the exit');
+  objective('Look into the mirror by the exit', 'The ornate mirror on the far wall. Stand close and look into it to unlock the door.');
   const mp = MAZE.real.g.position;
   await until(()=>Math.hypot(camW.x - mp.x, camW.z - mp.z) < 3.2 && facing(MAZE.real.g, .8));
   await sleep(2600);
@@ -1662,7 +1733,7 @@ async function sMirrors(retry){
   await sleep(1800);
   avatarFrozen = false;
   await jumpScare(g, {scream:{pitch:1150, dur:1.2, f1:950, f2:1450}});
-  unlockDoor('mirrors','hall3'); objective('Keep going');
+  unlockDoor('mirrors','hall3'); objective('The mirror door is open', 'Head through the exit door into the hotel.');
   await until(()=>inRoom('hall3')); hideAll();
 }
 // 3 ---- The Hotel and the elevator (Bellhop)
@@ -1670,7 +1741,7 @@ async function sHotel(retry){
   lockDoor('hotel','elevator'); lockDoor('elevator','hall4'); HOTEL.setFloor('L'); HOTEL.elevLight.mult = 1;
   stand(bellhop, HOTEL.deskSpot, SOUTH); bellhop.tilt = .5; bellhop.watch = false;
   await until(()=>inRoom('hotel'));
-  objective('Ring the bell for service');
+  objective('Ring the bell for service', 'The brass bell is on the front desk. Reach out and use it.');
   let rung = false; const u = addUse({obj:HOTEL.bell, r:.8, label:'Ring the bell', on:()=>{ rung = true; ding(); }});
   await until(()=>rung); removeUse(u);
   await sleep(900); bellhop.tilt = 0; bellhop.watch = true; say(bellhop.head, 'bell_welcome', 1.8); await sleep(3200);
@@ -1680,7 +1751,7 @@ async function sHotel(retry){
   stand(bellhop, front, P(camW.x,0,camW.z)); bellhop.watch = true;
   unlockDoor('hotel','elevator'); door.forceOpen = true; ding();
   say(bellhop.head, 'bell_lift', 1.8);
-  objective('Take the elevator');
+  objective('Take the elevator', 'Walk into the elevator through the open brass doors and wait.');
   await until(()=>inRoom('elevator') && Math.hypot(camW.x - door.x, camW.z - door.z) > 1.0);
   bellhop.root.visible = false;
   door.forceOpen = false; lockDoor('hotel','elevator'); await sleep(1200);
@@ -1689,7 +1760,7 @@ async function sHotel(retry){
   for (let i=0;i<floors.length;i++){ HOTEL.setFloor(floors[i]); if (i === 4) say(earR, 'bell_floor', 1.6); if (i === 9) flicker(900); await sleep(420); }
   HOTEL.elevLight.mult = 0; lightLevel = 0; duckDrone(true); await sleep(2000); lightLevel = 1; HOTEL.elevLight.mult = 1;
   await jumpScare(bellhop, {voice:'bell_scare', dist:.55, scream:{pitch:700, dur:1}});
-  unlockDoor('elevator','hall4'); DOOR['elevator>hall4'].forceOpen = true; ding(); objective('Keep going');
+  unlockDoor('elevator','hall4'); DOOR['elevator>hall4'].forceOpen = true; ding(); objective('The elevator doors are open', 'Step out and follow the passage to the woods.');
   await until(()=>inRoom('hall4')); DOOR['elevator>hall4'].forceOpen = false; hideAll();
 }
 // 4 ---- The Woods (Skinwalker)
@@ -1698,7 +1769,7 @@ async function sWoods(retry){
   const px = WOODS.pathX, wp = [.28,.42,.56,.7].map(fz=>RP('forest', px(fz), fz));
   stand(survivor, wp[0], SOUTH); survivor.watch = true; survivor.root.scale.setScalar(1); survivor.armL.sh.scale.y = survivor.armR.sh.scale.y = 1;
   await until(()=>inRoom('forest'));
-  objective('Find the way through the woods');
+  objective('Find the way through the woods', 'Follow the dirt path and the voice. The exit is past the lantern at the far end.');
   say(survivor.head, 'surv_help', 1.8, 2.5); await sleep(3800);
   let stage = 0, away = 0;
   while (stage < 4){
@@ -1718,17 +1789,21 @@ async function sWoods(retry){
   await jumpScare(skinwalker, {scream:{pitch:560, dur:1.2, f1:700, f2:1050}, roar:1.3});
   survivor.root.scale.setScalar(1); survivor.armL.sh.scale.y = survivor.armR.sh.scale.y = 1; survivor.tilt = 0;
   // innocent shapes
-  objective('Keep to the path');
-  const forms = [{o:deer, p:RP('forest', px(.78)+.18, .78), y:0}, {o:owl, p:RP('forest', px(.88)-.15, .88), y:1.1}];
+  objective('Keep to the path', 'Head for the lantern at the far end. Whatever you see now is not what it seems.');
+  const forms = [{o:deer, p:RP('forest', px(.78)+.18, .78), y:0}, {o:owl, p:RP('forest', px(.88)-.15, .88), y:1.1}].filter(f=>f.o.userData.model || !ONLY_3D);
   for (const f of forms){
     f.o.position.set(f.p.x, f.y, f.p.z); f.o.rotation.y = Math.atan2(camW.x - f.p.x, camW.z - f.p.z); f.o.visible = true;
     let a = 0; await until(()=>{ const d = Math.hypot(camW.x - f.o.position.x, camW.z - f.o.position.z); const seen = lookedAt(f.o, .75, f.y + .9); a = (d < 4.5 && !seen) ? a + .1 : 0; if (f.o.userData.head) f.o.userData.head.rotation.y = Math.sin(performance.now()/700)*.3; return a > 1.1 || d < 1.4; });
     f.o.visible = false; say(f.o, 'skin_hello', 1.4, 2); noise(.5,'highpass',1300,.2); await sleep(1500);
   }
-  const ex = DOOR['forest>hall5']; deer.position.set(ex.x + 1.2, 0, ex.z + 1.6); deer.rotation.y = 0; deer.visible = true;
-  await until(()=>flat(deer) < 3.2);
-  deer.userData.head.rotation.y = Math.PI; scream({pitch:520, dur:.9, vol:.3}); strobe(.3); await sleep(900); deer.visible = false; deer.userData.head.rotation.y = 0;
-  unlockDoor('forest','hall5'); objective('Keep going');
+  if (deer.userData.model || !ONLY_3D){
+    const ex = DOOR['forest>hall5']; deer.position.set(ex.x + 1.2, 0, ex.z + 1.6); deer.rotation.y = Math.PI; deer.visible = true;
+    await until(()=>flat(deer) < 3.2);
+    deer.rotation.y = Math.atan2(camW.x - deer.position.x, camW.z - deer.position.z); if (deer.userData.head) deer.userData.head.rotation.y = Math.PI;
+    tween(deer, P(deer.position.x + (camW.x - deer.position.x)*.4, 0, deer.position.z + (camW.z - deer.position.z)*.4), .2);
+    scream({pitch:520, dur:.9, vol:.3}); strobe(.3); hit(); await sleep(900); deer.visible = false; if (deer.userData.head) deer.userData.head.rotation.y = 0;
+  }
+  unlockDoor('forest','hall5'); objective('The way out of the woods is open', 'Go through the door past the lantern.');
   await until(()=>inRoom('hall5')); hideAll();
 }
 // 5 ---- The Doll's Playroom (Doll)
@@ -1742,23 +1817,23 @@ async function sPlayroom(retry){
   const teddy = makeTeddy();
   await until(()=>inRoom('playroom'));
   doll.watch = true; say(doll.head, 'doll_play', 1.6); await sleep(2800); say(doll.head, 'doll_teddy', 1.6);
-  objective('Find the doll’s teddy bear');
+  objective('Find the doll\u2019s teddy bear', 'Open the three toy chests around the room. The teddy is in one of them.');
   let found = false; const uses = [];
   PLAY.chests.forEach((c,i)=>{ uses.push(addUse({obj:c.g, r:1.0, label:'Open the toy chest', on:(hand)=>{ removeUse(uses[i]); c.lid.rotation.x = -1.3; noise(.3,'lowpass',600,.4);
-    if (i === teddyIn){ found = true; carry(teddy, hand); }
-    else { say(doll.head, 'doll_giggle', 1.4); const s = new THREE.Mesh(new THREE.SphereGeometry(.09,12,10), M(0xd8c8b8)); s.position.set(0,.5,0); c.g.add(s); tween(s, P(0,1.0,0), .15); setTimeout(()=>c.g.remove(s), 1400); } }})); });
+    if (i === teddyIn){ jumpOutOfChest(c).then(()=>{ found = true; carry(teddy, hand); objective('Give the teddy back to the doll', 'Bring the teddy to the doll and use it on her to open the door.'); }).catch(()=>{}); }
+    else { say(doll.head, 'doll_giggle', 1.4); noise(.5,'lowpass',900,.2); } }})); });
   // she creeps closer while you search
   let away = 0;
   const tick = onTick((dt)=>{ if (scaring) return; away = lookedAt(doll, .7) ? 0 : away + dt; if (away > 1.5 && flat(doll) > 2){ away = 0; const dx = camW.x - doll.root.position.x, dz = camW.z - doll.root.position.z, d = Math.hypot(dx,dz); const nx = doll.root.position.x + dx/d*.7, nz = doll.root.position.z + dz/d*.7; if (!blocked(nx, nz, .2)){ doll.root.position.x = nx; doll.root.position.z = nz; } doll.root.rotation.y = Math.atan2(dx, dz); doll.tilt = (Math.random()-.5)*.9; } });
   await until(()=>found); uses.forEach(removeUse);
-  objective('Give the teddy back to the doll');
+  objective('Give the teddy back to the doll', 'Bring the teddy to the doll and use it on her to open the door.');
   let given = false; const g = addUse({obj:doll.head, r:1.1, label:'Give her the teddy', on:()=>{ given = true; }});
   await until(()=>given); removeUse(g); offTick(tick); dropHeld();
   say(doll.head, 'doll_thanks', 1.8); PLAY.light.mult = .4; await sleep(3600);
   await blackout(900);
   await jumpScare(doll, {voice:'doll_giggle', scream:{pitch:1400, dur:1.1, f1:1000, f2:1600}, dist:.5});
   PLAY.light.mult = 1; teaDolls.forEach(d=>{ d.tilt = 1.2; d.watch = true; });
-  unlockDoor('playroom','hall6'); objective('Keep going');
+  unlockDoor('playroom','hall6'); objective('The playroom door is open', 'Leave before she wants to play again.');
   await until(()=>inRoom('hall6')); hideAll();
 }
 // 6 ---- The Nursery Ward (Baby Swarm)
@@ -1771,14 +1846,14 @@ async function sNicu(retry){
   await until(()=>inRoom('nicu'));
   const beeper = setInterval(()=>{ if (playing()) beep(); }, 1100);
   try{
-    objective('Walk quietly');
+    objective('Walk quietly', 'Wait for the nurse. She has something for you.');
     await sleep(1200); n1.watch = true; say(n1.head, 'nurse_hush', 1.5); await sleep(2400); n1.watch = false;
     // the nurse brings you a baby
     n0.root.add(bundle); bundle.position.set(0, 1.05, .32); bundle.rotation.set(0,0,0); bundle.visible = true; bundle.userData.head.rotation.set(0, Math.PI, 0);
     n0.pose = 'offer'; n0.watch = true;
     await until(()=>{ if (flat(n0) > 1.15){ chase(n0, .9, .1); n0.pose = 'offer'; } else { n0.speed = 0; faceDir(n0, camW.x - n0.root.position.x, camW.z - n0.root.position.z, .1, 20); } return flat(n0) <= 1.2; }, 100);
     say(n0.head, 'nurse_hold', 1.6);
-    objective('Take the baby');
+    objective('Take the baby', 'Reach out to the bundle in the nurse\u2019s arms and take it.');
     let took = false; const u = addUse({obj:bundle, r:1.0, label:'Take the baby', on:(hand)=>{ took = true; carry(bundle, hand, P(0, .02, -.12)); }});
     await until(()=>took); removeUse(u); n0.pose = 'idle';
     say(n0.head, 'nurse_careful', 1.6); await sleep(3000);
@@ -1786,7 +1861,7 @@ async function sNicu(retry){
     clearInterval(beeper); tone('sine', 1180, 1180, 2.5, .08);
     await sleep(1200);
     const head = bundle.userData.head, wp = new THREE.Vector3(); head.getWorldPosition(wp);
-    head.lookAt(camW); say(head, 'baby_mama', 1.8, .6); objective('');
+    if (bundle.userData.model){ bundle.rotation.y += Math.PI; tone('sine',200,90,.3,.2); } else head.lookAt(camW); say(head, 'baby_mama', 1.8, .6); objective('');
     await sleep(1400);
     NICU.red.mult = 1; scream({pitch:1500, dur:2.2, vol:.18, f1:1100, f2:1700}); scream({pitch:1300, dur:2.0, vol:.14, f1:1000, f2:1600, delay:.3});
     swarm.root.visible = true; tween(swarm.root, P(back.x, 0, back.z), .6);
@@ -1795,7 +1870,7 @@ async function sNicu(retry){
     await jumpScare(swarm, {scream:{pitch:1350, dur:1.4, f1:1000, f2:1600}, roar:1.6});
   } finally { clearInterval(beeper); }
   NICU.red.mult = 0; nurses.forEach(n=>n.root.visible = false);
-  unlockDoor('nicu','hall7'); objective('Keep going');
+  unlockDoor('nicu','hall7'); objective('The ward door is open', 'Go through to the next room.');
   await until(()=>inRoom('hall7')); hideAll();
 }
 // 7 ---- The Butcher's Shop
@@ -1805,13 +1880,13 @@ async function sShop(retry){
   const chopper = setInterval(()=>{ if (playing() && butcher.pose === 'chop') chop(butcher.root.position); }, 857);
   try{
     await until(()=>inRoom('shop'));
-    objective('Look around the shop');
+    objective('Look around the shop', 'The way on is through this shop. Walk toward the counter at the back.');
     let inT = 0; await until(()=>{ inT += .1; return flat(butcher) < 5 || inT > 7; });
     butcher.pose = 'idle'; duckDrone(true); await sleep(2200);
     for (let i=0;i<15;i++){ faceDir(butcher, camW.x - butcher.root.position.x, camW.z - butcher.root.position.z, .1, 3); await sleep(100); }
     butcher.watch = true; heartbeat(true, 90); await sleep(2600);
     const inDoor = DOORS.find(d=>d.to === 'shop'); lockDoor(inDoor.from, 'shop');
-    say(butcher.head, 'butch_meat', 2); duckDrone(false); objective('Run!');
+    say(butcher.head, 'butch_meat', 2); duckDrone(false); objective('Run!', 'Get away from him!');
     let t = 0;
     await until(()=>{ t += .1; chase(butcher, 1.5, .1); return t > 4.5 || flat(butcher) < 2.2; }, 100);
     butcher.speed = 0;
@@ -1831,9 +1906,9 @@ async function sShop(retry){
 // 8 ---- Strapped to the table
 async function sStraps(retry){
   hideAll(); dropHeld();
-  canMove = false; placePlayer(SLAB.stand, 0);
-  if (!renderer.xr.isPresenting){ yaw = 0; }
-  SLAB.straps.forEach(s=>{ s.open = false; s.g.visible = true; s.g.rotation.set(0,0,0); });
+  canMove = false; placePlayer(SLAB.stand, Math.PI);
+  if (!renderer.xr.isPresenting){ yaw = Math.PI; pitch = -.35; }
+  SLAB.straps.forEach(s=>{ s.open = false; s.g.visible = true; s.g.rotation.set(0,0,0); s.g.position.copy(s.base); });
   SLAB.knife.visible = true; SLAB.knife.position.copy(SLAB.knifeSpot); GROUPS.slaughter.add(SLAB.knife);
   lightLevel = 0; await sleep(retry ? 800 : 1500); lightLevel = 1;
   const c = roomCenter('slaughter');
@@ -1845,10 +1920,10 @@ async function sStraps(retry){
   let left = 90; const timerEl = $('timer'); timerEl.hidden = false;
   const fmt = s => Math.floor(s/60) + ':' + String(Math.floor(s%60)).padStart(2,'0');
   const drawClock = ()=>{ const g = SLAB.clock.g; g.clearRect(0,0,256,128); g.fillStyle='#120606'; g.fillRect(0,0,256,128); g.fillStyle = left < 20 ? '#ff3020' : '#ff8a40'; g.font='bold 72px monospace'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(fmt(left),128,66); SLAB.clock.t.needsUpdate = true; };
-  objective('Get out of the straps before he comes back'); drawClock();
+  objective('Get out of the straps before he comes back', 'Hold to unbuckle the chest and both ankle straps. The last strap is locked: look for the knife on the tray at your right.'); drawClock();
   let cut = false, holdingKnife = false;
   const uses = [];
-  SLAB.straps.forEach(s=>{ uses.push(addUse({obj:s.g, r:.55, hold: s.locked ? 2 : 1.2,
+  SLAB.straps.forEach(s=>{ uses.push(addUse({obj:s.g, r: s.name.includes('ankle') ? .85 : .6, hold: s.locked ? 2 : 1.2,
     label:()=> s.locked ? (holdingKnife && SLAB.straps.every(o=>o.locked || o.open) ? 'Cut yourself free (hold)' : 'Padlocked. It needs a key') : 'Unbuckle the ' + s.name + ' strap (hold)',
     on:()=>{ if (s.locked){ if (holdingKnife && SLAB.straps.every(o=>o.locked || o.open)) cut = true; else { tone('square', 300, 280, .08, .1); caption('The lock won’t open without a key. Look around you.', 2.5); } return; }
       if (s.open) return; s.open = true; buckle(); s.g.rotation.x = .9; s.g.position.y -= .05; removeUse(uses[SLAB.straps.indexOf(s)]); } })); });
@@ -1872,11 +1947,11 @@ async function sShadow(retry){
   hideAll(); placePlayer(RP('wake', .5, .3), 0);
   lightLevel = 0; await sleep(1200); lightLevel = .6;
   if (!retry){ say(earB, 'shadow_illusion', 1.6); await sleep(3800); }
-  objective('Something is here with you');
+  objective('Something is here with you', 'Get ready to run north when the door opens.');
   for (let i=0;i<10;i++){ lightLevel = .6 - i*.03; await sleep(200); }
   say(earB, 'shadow_run', 2); await sleep(900);
   unlockDoor('wake','chase'); DOOR['wake>chase'].forceOpen = true;
-  objective(renderer.xr.isPresenting ? 'RUN to the chapel! Squeeze the left grip to sprint' : 'RUN to the chapel! Hold Shift to sprint');
+  objective('RUN to the chapel!', renderer.xr.isPresenting ? 'Squeeze the left grip to sprint straight down the long hall. The chapel door is at the end.' : 'Hold Shift to sprint straight down the long hall. The chapel door is at the end.');
   camera.getWorldDirection(camDir); camDir.y = 0; camDir.normalize();
   stand(shadow, RP('wake', .5, .02), P(camW.x,0,camW.z)); shadow.watch = true; heartbeat(true, 140);
   CHASE_LIGHTS.forEach(l=>{ l.mult = 1; });
@@ -1896,11 +1971,11 @@ async function sChapel(retry){
   clearFires(); CHAPEL.drapes.forEach(d=>{ d.lit = false; d.m.visible = true; }); CHAPEL.candles.forEach(c=>{ c.on = true; }); CHAPEL.cross.rotation.z = 0;
   CHAPEL.matches.visible = true; CHAPEL.matches.position.copy(CHAPEL.matchSpot); GROUPS.church.add(CHAPEL.matches);
   const alt = CHAPEL.altar; stand(nun, P(alt.x, 0, alt.z + .9), NORTH); nun.faceMesh.visible = false; nun.tilt = 0;
-  objective('You are safe here... for now');
+  objective('You are safe here... for now', 'The Shadow can\u2019t follow you in. Walk toward the nun at the altar.');
   await until(()=>flat(nun) < 7);
   for (let i=0;i<16;i++){ faceDir(nun, camW.x - nun.root.position.x, camW.z - nun.root.position.z, .1, 2.5); await sleep(100); }
   nun.watch = true; nun.tilt = .25; say(nun.head, 'nun_welcome', 1.6); await sleep(5200);
-  objective('Approach the altar');
+  objective('Approach the altar', 'Go up to the nun at the altar.');
   await until(()=>flat(nun) < 2.3);
   say(nun.head, 'nun_pray', 1.6); await sleep(3200);
   for (let i=0;i<CHAPEL.candles.length;i++){ CHAPEL.candles[i].on = false; noise(.3,'highpass',1800,.15); await sleep(260); }
@@ -1910,9 +1985,9 @@ async function sChapel(retry){
   nun.faceMesh.visible = true;
   await jumpScare(nun, {scream:{pitch:900, dur:1.2}, hide:false});
   stand(nun, P(alt.x, 0, alt.z + .9), SOUTH);
-  objective('Burn the chapel down. Find something to start a fire');
+  objective('Burn the chapel down', 'Find the box of matches near the altar, then set two of the red drapes on fire. Don\u2019t let her catch you.');
   let lit = 0, hasMatches = false, nunAway = 0;
-  const mu = addUse({obj:CHAPEL.matches, r:.8, label:'Take the matches', on:(hand)=>{ hasMatches = true; removeUse(mu); carry(CHAPEL.matches, hand); objective('Set the drapes on fire'); tone('sine', 900, 1200, .1, .1); }});
+  const mu = addUse({obj:CHAPEL.matches, r:.8, label:'Take the matches', on:(hand)=>{ hasMatches = true; removeUse(mu); carry(CHAPEL.matches, hand); objective('Set the drapes on fire', 'Use the matches on two of the red velvet drapes along the walls.'); tone('sine', 900, 1200, .1, .1); }});
   const du = CHAPEL.drapes.map(d=>addUse({pos:P(d.p.x, 1.3, d.p.z), r:1.1, label:()=> hasMatches ? 'Set the drapes alight' : 'Heavy velvet drapes', on:()=>{ if (!hasMatches || d.lit) return; d.lit = true; lit++; noise(.5,'bandpass',800,.4); igniteAt(P(d.p.x, 1.6, d.p.z), 1.1); }}));
   let grace = 3;
   const tick = onTick((dt)=>{ if (scaring) return; grace -= dt; if (grace > 0){ nun.speed = 0; return; }
@@ -1923,7 +1998,7 @@ async function sChapel(retry){
   CHAPEL.drapes.forEach((d,i)=>{ if (!d.lit){ d.lit = true; setTimeout(()=>igniteAt(P(d.p.x, 1.6, d.p.z), 1.1), 900 + i*500); } });
   say(nun.head, 'nun_fire', 2.2); igniteAt(P(nun.root.position.x, 1.0, nun.root.position.z), .9); scream({pitch:950, dur:2.2, vol:.45}); nun.pose = 'reach';
   await sleep(2200); nun.root.visible = false;
-  unlockDoor('church','hall8'); objective('Escape the chapel!');
+  unlockDoor('church','hall8'); objective('Escape the chapel!', 'The door at the back of the chapel is open. Go!');
   await until(()=>inRoom('hall8'));
   hideAll();
 }
@@ -1949,7 +2024,7 @@ async function sFinale(retry){
   standIns.forEach(s=>{ s.root.visible = false; s.root.userData.rid = s === shadow ? 'shadowR' : 'nunR'; if (!REFLECT_ONLY.includes(s.root)) REFLECT_ONLY.push(s.root); });
   FINAL.mirrors.forEach((m,i)=>{ const k = kinds[i]; m.glass.userData.rules = k === 'true' ? {avatar:true} : k === 'noPen' ? {avatar:true, hide:[FINAL.pen]} : k === 'noYou' ? {} : k === 'shadow' ? {shadowR:true} : {nunR:true}; });
   const tick = onTick(()=>{ standIns.forEach(s=>{ s.root.position.copy(avatar.root.position); s.root.rotation.copy(avatar.root.rotation); s.pose = 'idle'; s.watch = false; }); });
-  objective('Only one mirror is the way out. Find the one that tells the truth');
+  objective('Find the mirror that tells the truth', 'Only one of the five mirrors shows you AND the pen on the table. Step into that one to escape.');
   let chosen = -1; const uses = FINAL.mirrors.map((m,i)=>addUse({obj:m.g, r:1.3, label:'Step into this mirror', on:()=>{ chosen = i; }}));
   await until(()=>chosen >= 0);
   uses.forEach(removeUse); offTick(tick);
@@ -2045,7 +2120,7 @@ function frame(){
   }
   tickDoors(dt); tickFires(dt, t); tickAvatar(dt, t); tickPanos();
   for (let i=tweens.length-1;i>=0;i--){ const tw = tweens[i]; tw.t += dt; const k = Math.min(1, tw.t/tw.dur), e = 1 - Math.pow(1-k, 3); tw.obj.position.lerpVectors(tw.from, tw.to, e); if (k >= 1){ tweens.splice(i,1); tw.res(); } }
-  CAST.forEach(ch=>{ if (ch.isAvatar || !ch.root.visible) return; const d = ch.root.position.distanceTo(camW); if (d > 22 && ch.pose !== 'scare') return; if (ch.model) animateModel(ch, dt); else animate(ch, dt, t); });
+  CAST.forEach(ch=>{ if (ONLY_3D && !ch.model && !ch.isAvatar) ch.root.visible = false; if (ch.isAvatar || !ch.root.visible) return; const d = ch.root.position.distanceTo(camW); if (d > 22 && ch.pose !== 'scare') return; if (ch.model) animateModel(ch, dt); else animate(ch, dt, t); });
   PLAY.mobile.rotation.y = t*.3;
   cullT -= dt; if (cullT <= 0){ cullRooms(); cullT = .5; }
   updateLights(t);
@@ -2053,7 +2128,7 @@ function frame(){
   renderer.render(scene, camera);
 }
 renderer.setAnimationLoop(frame);
-tryModels(); tryProps(); tryTextures(); tryPanos();
+tryModels(); tryProps(); tryTextures(); tryPanos(); tryCritters();
 window.HM = {rig, camera, CAST, ROOM, DOOR, begin, get state(){ return state; }, get scene(){ return sceneIdx; }, setLook:(y,p)=>{ yaw=y; pitch=p; }, teleport:(x,z)=>{ placePlayer(P(x,0,z), yaw); }, roomPoint, USES, keys, place:placePlayer, RP, scaresN:()=>scares, objective:()=>$('objective').textContent,
   uses:()=>USES.map(o=>typeof o.label==='function'?o.label():o.label),
   fire:(i)=>{ const o = USES[i]; if (o.hold && o.onHold){ for (let k=0;k<200;k++) o.onHold(.1, 0); } o.on(null); },
